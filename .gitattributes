@@ -1,0 +1,21 @@
+# Git attributes for security scanning
+# Mark vendored code so GitHub doesn't scan it for vulnerabilities
+
+# Vendored third-party projects
+src/firecrawl/** linguist-vendored
+src/hedgedoc/** linguist-vendored  
+src/AIOStreams/** linguist-vendored
+src/fetch-mcp/** linguist-vendored
+src/mcp-webresearch/** linguist-vendored
+src/markdownify-mcp/** linguist-vendored
+src/zurg/** linguist-vendored
+vendor/** linguist-vendored
+reference/** linguist-vendored
+
+# Documentation
+*.md linguist-documentation
+
+# Generated files
+package-lock.json linguist-generated
+*.lock linguist-generated
+

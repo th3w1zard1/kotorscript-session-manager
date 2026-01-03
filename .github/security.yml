@@ -1,0 +1,30 @@
+# GitHub Security Configuration
+# This file configures security scanning and vulnerability alerts
+
+# Exclude vendored/reference code from security scanning
+security:
+  ignore-paths:
+    # Vendored third-party projects (not actively maintained)
+    - "src/firecrawl/**"
+    - "src/hedgedoc/**"
+    - "src/AIOStreams/**"
+    - "src/fetch-mcp/**"
+    - "src/mcp-webresearch/**"
+    - "src/markdownify-mcp/**"
+    - "src/zurg/**"
+    - "vendor/**"
+    - "reference/**"
+    
+    # Test and example directories
+    - "**/examples/**"
+    - "**/test/**"
+    - "**/tests/**"
+    - "**/__tests__/**"
+    
+    # Generated or temporary files
+    - "**/node_modules/**"
+    - "**/dist/**"
+    - "**/build/**"
+    - "**/.venv/**"
+    - "**/venv/**"
+

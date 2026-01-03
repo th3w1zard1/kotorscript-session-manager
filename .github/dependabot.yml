@@ -1,0 +1,83 @@
+# Dependabot configuration for automated dependency updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Root package dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "02:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "03:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "04:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # Go modules (if any active projects)
+  - package-ecosystem: "gomod"
+    directory: "/projects"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "05:00"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "go"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # Python dependencies (if any active projects)
+  - package-ecosystem: "pip"
+    directory: "/scripts"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+# Note: Vendored code in src/ is intentionally excluded from dependency scanning
+# These are third-party projects included for reference and are not actively maintained
+

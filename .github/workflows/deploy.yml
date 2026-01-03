@@ -1,0 +1,83 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        cd src/compose2hcl
+        npm ci
+        
+    - name: Build project
+      run: |
+        cd src/compose2hcl
+        npm run build
+        
+    - name: Setup dynamic configuration
+      run: |
+        chmod +x .github/scripts/setup-pages.sh
+        .github/scripts/setup-pages.sh
+        
+    - name: Build web interface
+      run: |
+        cd src/compose2hcl
+        mkdir -p dist/web
+        cp -r web/* dist/web/
+        cp -r src/types dist/
+        cp -r src/validation dist/
+        cp -r src/generators dist/
+        cp src/converter.ts dist/
+        cp src/index.ts dist/
+        
+    - name: Create GitHub Pages structure
+      run: |
+        chmod +x .github/scripts/create-pages-structure.sh
+        .github/scripts/create-pages-structure.sh
+        
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: src/compose2hcl/gh-pages
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

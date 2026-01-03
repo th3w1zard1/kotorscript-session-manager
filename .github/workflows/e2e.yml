@@ -1,0 +1,218 @@
+name: E2E
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+
+jobs:
+  e2e-credentials:
+    name: E2E (Credentials)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright deps
+        working-directory: src/bolabaden-site
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Create CI env file
+        working-directory: src/bolabaden-site
+        run: |
+          cat > .env.ci << 'EOF'
+          NODE_ENV=production
+          BOLABADEN_NEXTJS_PORT=3000
+          DOMAIN=localhost
+          TS_HOSTNAME=ci
+          TINYAUTH_SECRET=supersecretci
+          NEXTAUTH_URL=http://localhost:3000
+          NEXTAUTH_SECRET=supersecretci
+          APP_TITLE=Bolabaden CI
+          NEXT_PUBLIC_APP_TITLE=Bolabaden CI
+          USERS=user1:testpass|user,verified123:testpass|verified,admin123:testpass|admin,mod123:testpass|moderator,owner-root:testpass|owner
+          OAUTH_AUTO_REDIRECT=none
+          OAUTH_WHITELIST=
+          ADMIN_ACCOUNTS=owner-root@ci.local
+          OWNER_ACCOUNTS=owner-root@ci.local
+          # Show only credentials for this job
+          NEXT_PUBLIC_SHOW_KEYCLOAK=false
+          NEXT_PUBLIC_SHOW_AUTHENTIK=false
+          NEXT_PUBLIC_SHOW_AUTHELIA=false
+          NEXT_PUBLIC_SHOW_GOOGLE=false
+          NEXT_PUBLIC_SHOW_GITHUB=false
+          # Proxy upstreams used by iframe pages
+          PROXY_GRAFANA_UPSTREAM=http://grafana:3000
+          PROXY_PROMETHEUS_UPSTREAM=http://prometheus:9090
+          PROXY_HOMEPAGE_UPSTREAM=http://homepage:3000
+          PROXY_DASHY_UPSTREAM=http://dashy:80
+          PROXY_HOMER_UPSTREAM=http://homer:8080
+          NEXT_PUBLIC_DASHBOARD_MODE=homepage
+          NEXT_PUBLIC_METRICS_MODE=grafana
+          EOF
+
+      - name: Start CI stack (credentials)
+        run: |
+          # Generate Traefik middlewares into repo path used by Traefik file provider
+          pushd src/bolabaden-site
+          npm run gen:middlewares
+          popd
+          docker compose -f docker-compose.ci.yml --env-file src/bolabaden-site/.env.ci up -d --build
+
+      - name: Wait for services
+        run: |
+          timeout 120 bash -c 'until curl -sf http://localhost:3000/ > /dev/null; do sleep 2; done'
+          timeout 120 bash -c 'until curl -sf http://localhost:3000/dashboard > /dev/null; do sleep 2; done'
+
+      - name: Run Playwright E2E
+        working-directory: src/bolabaden-site
+        env:
+          E2E_BASE_URL: http://localhost:3000
+        run: |
+          npx playwright test --config=playwright.config.ts --reporter=line
+
+      - name: Docker logs on failure
+        if: failure()
+        run: |
+          docker compose -f docker-compose.ci.yml logs --no-color | tail -n 5000 || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.ci.yml down -v
+
+  e2e-keycloak:
+    name: E2E (Keycloak OIDC)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright deps
+        working-directory: src/bolabaden-site
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Prepare Keycloak realm (CI)
+        run: |
+          mkdir -p configs/keycloak
+          cat > configs/keycloak/realm-ci.json << 'JSON'
+          {
+            "realm": "bolabaden-ci",
+            "enabled": true,
+            "clients": [
+              {
+                "clientId": "nextauth",
+                "protocol": "openid-connect",
+                "publicClient": true,
+                "redirectUris": [
+                  "http://localhost:3000/api/auth/callback/keycloak"
+                ],
+                "webOrigins": [
+                  "http://localhost:3000"
+                ],
+                "attributes": {
+                  "pkce.code.challenge.method": "S256"
+                }
+              }
+            ],
+            "users": [
+              {"username": "kc-user","email": "user1@ci.local","enabled": true,"emailVerified": true,"credentials": [{"type":"password","value":"password"}],"realmRoles": [],"groups": ["user"]},
+              {"username": "kc-mod","email": "mod123@ci.local","enabled": true,"emailVerified": true,"credentials": [{"type":"password","value":"password"}],"realmRoles": [],"groups": ["moderator"]},
+              {"username": "kc-owner","email": "owner-root@ci.local","enabled": true,"emailVerified": true,"credentials": [{"type":"password","value":"password"}],"realmRoles": [],"groups": ["owner"]}
+            ],
+            "groups": [
+              {"name": "user"},
+              {"name": "moderator"},
+              {"name": "owner"}
+            ]
+          }
+          JSON
+
+      - name: Create CI env file (Keycloak)
+        working-directory: src/bolabaden-site
+        run: |
+          cat > .env.ci << 'EOF'
+          NODE_ENV=production
+          BOLABADEN_NEXTJS_PORT=3000
+          DOMAIN=localhost
+          TS_HOSTNAME=ci
+          TINYAUTH_SECRET=supersecretci
+          NEXTAUTH_URL=http://localhost:3000
+          NEXTAUTH_SECRET=supersecretci
+          APP_TITLE=Bolabaden CI
+          NEXT_PUBLIC_APP_TITLE=Bolabaden CI
+          USERS=
+          OAUTH_AUTO_REDIRECT=keycloak
+          OAUTH_WHITELIST=
+          ADMIN_ACCOUNTS=owner-root@ci.local
+          OWNER_ACCOUNTS=owner-root@ci.local
+          NEXT_PUBLIC_SHOW_KEYCLOAK=true
+          NEXT_PUBLIC_SHOW_AUTHENTIK=false
+          NEXT_PUBLIC_SHOW_AUTHELIA=false
+          NEXT_PUBLIC_SHOW_GOOGLE=false
+          NEXT_PUBLIC_SHOW_GITHUB=false
+          # Generic OIDC provider (Keycloak)
+          OIDC_ISSUER=http://keycloak:8080/realms/bolabaden-ci
+          OIDC_CLIENT_ID=nextauth
+          OIDC_CLIENT_SECRET=
+          OIDC_NAME=keycloak
+          # Proxy upstreams used by iframe pages
+          PROXY_GRAFANA_UPSTREAM=http://grafana:3000
+          PROXY_PROMETHEUS_UPSTREAM=http://prometheus:9090
+          PROXY_HOMEPAGE_UPSTREAM=http://homepage:3000
+          PROXY_DASHY_UPSTREAM=http://dashy:80
+          PROXY_HOMER_UPSTREAM=http://homer:8080
+          NEXT_PUBLIC_DASHBOARD_MODE=homepage
+          NEXT_PUBLIC_METRICS_MODE=grafana
+          EOF
+
+      - name: Start CI stack (Keycloak)
+        run: |
+          pushd src/bolabaden-site
+          npm ci --silent
+          npm run gen:middlewares
+          popd
+          docker compose -f docker-compose.ci.yml --env-file src/bolabaden-site/.env.ci up -d --build keycloak
+          # Start app and embeds after Keycloak
+          docker compose -f docker-compose.ci.yml --env-file src/bolabaden-site/.env.ci up -d --build bolabaden-nextjs grafana prometheus homepage
+
+      - name: Wait for services
+        run: |
+          timeout 180 bash -c 'until curl -sf http://localhost:3000/ > /dev/null; do sleep 2; done'
+          timeout 180 bash -c 'until curl -sf http://localhost:3000/login > /dev/null; do sleep 2; done'
+          timeout 180 bash -c 'until curl -sf http://localhost:8081/ > /dev/null; do sleep 2; done' || true
+
+      - name: Run Playwright E2E (OIDC)
+        working-directory: src/bolabaden-site
+        env:
+          E2E_BASE_URL: http://localhost:3000
+        run: |
+          npx playwright test tests/e2e/oauth-keycloak.spec.ts --reporter=line
+
+      - name: Docker logs on failure
+        if: failure()
+        run: |
+          docker compose -f docker-compose.ci.yml logs --no-color | tail -n 5000 || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.ci.yml down -v
+

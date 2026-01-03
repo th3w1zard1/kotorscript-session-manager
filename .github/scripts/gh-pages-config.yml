@@ -1,0 +1,24 @@
+# GitHub Pages Configuration
+# This file will be dynamically updated by the setup script
+
+# Repository information (auto-populated)
+repository:
+  owner: "{{REPO_OWNER}}"
+  name: "{{REPO_NAME}}"
+  url: "https://github.com/{{REPO_OWNER}}/{{REPO_NAME}}"
+
+# GitHub Pages settings
+pages:
+  source: "gh-pages"
+  branch: "gh-pages"
+  domain: "{{REPO_OWNER}}.github.io"
+  path: "/{{REPO_NAME}}"
+
+# Build settings
+build:
+  source: "src/compose2hcl/dist"
+  output: "gh-pages"
+  commands:
+    - "npm ci"
+    - "npm run build"
+    - "cp -r web/* dist/web/"
