@@ -1,0 +1,6 @@
+[submodule "src/cloudflare-ddns"]
+	path = src/cloudflare-ddns
+	url = https://github.com/favonia/cloudflare-ddns
+[submodule "ai-researchwizard"]
+	path = ai-researchwizard
+	url = https://github.com/bolabaden/ai-researchwizard
