@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KotorScript Session Manager</title>
+    <style>
+        :root {
+            --primary: #4a6fa5;
+            --secondary: #166088;
+            --accent: #4fc3f7;
+            --background: #1e1e2e;
+            --card-bg: #2a2a3c;
+            --text: #e0e0e0;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card h2 {
+            color: var(--accent);
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .card p {
+            margin-bottom: 20px;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .feature-card {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-card h3 {
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+        
+        .button {
+            display: inline-block;
+            background-color: var(--primary);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .button:hover {
+            background-color: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        
+        .status-info {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        .status-dot.available {
+            background-color: #4caf50;
+        }
+        
+        .status-dot.busy {
+            background-color: #f44336;
+        }
+        
+        footer {
+            margin-top: auto;
+            text-align: center;
+            padding: 20px;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .features {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+        }
+
+        /* Animation for waiting room */
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+        
+        .waiting {
+            animation: pulse 1.5s infinite;
+        }
+        
+        .progress-container {
+            width: 100%;
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            margin: 20px 0;
+            height: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background-color: var(--accent);
+            width: 0;
+            transition: width 0.5s ease;
+        }
+        
+        #session-count {
+            font-weight: bold;
+            color: var(--accent);
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>KotorScript Session Manager</h1>
+            <p class="subtitle">Interactive VS Code environment for KOTOR modding</p>
+        </header>
+        
+        <div class="card">
+            <h2>Start a New Session</h2>
+            <p>Launch a private, ephemeral VS Code instance with the HoloLSP extension pre-installed. Each session lasts for 1 hour of inactivity before being automatically closed.</p>
+            
+            <div class="button-container">
+                <form method="post" action="/new" id="session-form">
+                    <button type="submit" class="button" id="start-button">Start New Session</button>
+                </form>
+            </div>
+            
+            <div class="status">
+                <p>Current status: <span id="session-count">{{ current }}/{{ max }} sessions active</span></p>
+                <div class="status-info">
+                    <div class="status-item">
+                        <div class="status-dot {{ 'available' if available else 'busy' }}"></div>
+                        <span>{{ 'Sessions Available' if available else 'All Sessions In Use' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="waiting-room" class="card hidden">
+            <h2 class="waiting">Waiting for an available session...</h2>
+            <p>All sessions are currently in use. Please keep this tab open and we'll automatically start your session as soon as one becomes available.</p>
+            
+            <div class="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            
+            <p>Position in queue: <span id="queue-position">1</span></p>
+        </div>
+        
+        <div class="features">
+            <div class="feature-card">
+                <h3>HoloLSP Extension</h3>
+                <p>Built-in language support for KOTOR NWScript files (.nss, .ncs) with syntax highlighting and code completion.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Ephemeral Workspace</h3>
+                <p>Each session provides a clean environment. Download your work before closing to save your progress.</p>
+            </div>
+            <div class="feature-card">
+                <h3>One Hour Sessions</h3>
+                <p>Sessions remain active for one hour of inactivity, giving you plenty of time to work.</p>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>&copy; {{ year }} KotorScript | Session timeout: 1 hour of inactivity</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check session capacity every 5 seconds
+            function updateSessionStatus() {
+                fetch('/capacity')
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('session-count').textContent = `${data.current}/${data.max} sessions active`;
+                        
+                        const statusDot = document.querySelector('.status-dot');
+                        if (data.available) {
+                            statusDot.classList.add('available');
+                            statusDot.classList.remove('busy');
+                            statusDot.nextElementSibling.textContent = 'Sessions Available';
+                        } else {
+                            statusDot.classList.add('busy');
+                            statusDot.classList.remove('available');
+                            statusDot.nextElementSibling.textContent = 'All Sessions In Use';
+                        }
+                    })
+                    .catch(error => console.error('Error fetching capacity:', error));
+            }
+            
+            // Initial update and set interval
+            updateSessionStatus();
+            setInterval(updateSessionStatus, 5000);
+            
+            // Form submission handling
+            document.getElementById('session-form').addEventListener('submit', function(e) {
+                const startButton = document.getElementById('start-button');
+                startButton.textContent = 'Starting session...';
+                startButton.disabled = true;
+            });
+        });
+    </script>
+</body>
+</html>

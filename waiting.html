@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Waiting for Session - KotorScript</title>
+        <style>
+            :root {
+                --primary: #4a6fa5;
+                --secondary: #166088;
+                --accent: #4fc3f7;
+                --background: #1e1e2e;
+                --card-bg: #2a2a3c;
+                --text: #e0e0e0;
+            }
+            
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background-color: var(--background);
+                color: var(--text);
+                line-height: 1.6;
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh;
+                padding: 20px;
+            }
+            
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                width: 100%;
+            }
+            
+            header {
+                text-align: center;
+                margin-bottom: 40px;
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+                margin-bottom: 10px;
+                color: var(--accent);
+            }
+            
+            .card {
+                background-color: var(--card-bg);
+                border-radius: 10px;
+                padding: 30px;
+                margin-bottom: 30px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            }
+            
+            /* Animation for waiting room */
+            @keyframes pulse {
+                0% { opacity: 0.6; }
+                50% { opacity: 1; }
+                100% { opacity: 0.6; }
+            }
+            
+            .waiting {
+                animation: pulse 1.5s infinite;
+            }
+            
+            .progress-container {
+                width: 100%;
+                background-color: var(--background);
+                border-radius: 10px;
+                margin: 20px 0;
+                height: 10px;
+                overflow: hidden;
+            }
+            
+            .progress-bar {
+                height: 100%;
+                background-color: var(--accent);
+                width: 0;
+                transition: width 0.5s ease;
+            }
+            
+            footer {
+                margin-top: auto;
+                text-align: center;
+                padding: 20px;
+                color: #aaa;
+                font-size: 0.9rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>KotorScript Session Manager</h1>
+            </header>
+            
+            <div class="card">
+                <h2 class="waiting">Waiting for an available session...</h2>
+                <p>All sessions are currently in use ({{ current }}/{{ max }}). Please keep this tab open and we'll automatically start your session as soon as one becomes available.</p>
+                
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                
+                <p id="status-message">Checking for available sessions...</p>
+                
+                <form id="session-form" method="post" action="/new" style="display: none;">
+                    <input type="hidden" name="waiting" value="true">
+                </form>
+            </div>
+        </div>
+        
+        <footer>
+            <p>&copy; {{ year }} KotorScript</p>
+        </footer>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const progressBar = document.getElementById('progress-bar');
+                const statusMessage = document.getElementById('status-message');
+                const sessionForm = document.getElementById('session-form');
+                let progress = 0;
+                
+                // Animate progress bar
+                function updateProgressBar() {
+                    progress += 1;
+                    if (progress > 100) progress = 0;
+                    progressBar.style.width = progress + '%';
+                }
+                
+                setInterval(updateProgressBar, 100);
+                
+                // Check session availability
+                function checkAvailability() {
+                    fetch('/capacity')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.available) {
+                                statusMessage.textContent = 'Session available! Starting now...';
+                                sessionForm.submit();
+                            } else {
+                                statusMessage.textContent = `Waiting for available session... (${data.current}/${data.max} active)`;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error checking availability:', error);
+                            statusMessage.textContent = 'Error checking availability. Retrying...';
+                        });
+                }
+                
+                // Check immediately and then every 2 seconds
+                checkAvailability();
+                setInterval(checkAvailability, 2000);
+            });
+        </script>
+    </body>
+</html>
