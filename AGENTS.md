@@ -4,7 +4,7 @@
 
 ### Overview
 
-This is a single-file FastAPI application (`session_manager.py`) that manages ephemeral VS Code (OpenVSCode Server) containers for KOTOR game modding. It has no `requirements.txt` or `pyproject.toml`.
+This is a single-file FastAPI application (`session_manager.py`) that manages ephemeral VS Code (OpenVSCode Server) containers for KOTOR game modding. Dependencies are listed in `requirements.txt`.
 
 ### Running the application
 
@@ -38,4 +38,12 @@ No formal lint config exists in the repo. Use `ruff check session_manager.py` fo
 
 - Templates directory is `/tmp/templates/` (not the repo root). The app reads `index.html` and `waiting.html` from there, falling back to default HTML if missing.
 - Python packages install to `~/.local/bin` — ensure this is on `PATH`.
-- No automated test suite exists in the repository; tests are run via GitHub Actions CI workflows (Playwright E2E, stack tests).
+- No Python test suite (pytest) exists; CI validates via lint, compilation, and endpoint smoke tests.
+
+### CI Workflows
+
+- `test-stack.yml` — Lint + compile + endpoint smoke tests (runs on every PR/push)
+- `e2e.yml` — End-to-end endpoint tests (runs on non-markdown changes)
+- `deploy.yml` — Deploy static HTML to GitHub Pages
+- `docker-build.yml` — Build and push Docker image to GHCR
+- `.github/` was previously in `.gitignore`, which blocked workflow updates; it has been removed.
