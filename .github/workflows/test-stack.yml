@@ -1,51 +1,59 @@
-name: Test Media Stack
+name: Test Session Manager
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
-  repository_dispatch:
-    types: [package_updated]
 
 jobs:
-  test-stack:
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        python-version: '3.12'
 
-    - name: Pull latest image
-      run: docker pull th3w1zard1/bolabaden:latest
+    - name: Install dependencies
+      run: pip install -r requirements.txt
 
-    - name: Start stack with healthchecks
+    - name: Lint with ruff
       run: |
-        docker run -d --name bolabaden th3w1zard1/bolabaden:latest
-        # Wait for services to become healthy
-        timeout 300 bash -c 'while [[ $(docker ps -q --filter "health=healthy" | wc -l) -lt 3 ]]; do sleep 10; done' || {
-          docker ps -a
-          docker logs bolabaden
-          exit 1
-        }
+        pip install ruff
+        ruff check session_manager.py --exit-zero
 
-    - name: Verify service status
+    - name: Verify Python compilation
+      run: python -m py_compile session_manager.py
+
+    - name: Set up templates
       run: |
-        # Check key containers are running
-        docker ps --format "table {{.Names}}\t{{.Status}}"
-        
-        # Additional checks after short delay
-        sleep 30
-        docker ps
-        docker exec -T bolabaden curl -I http://localhost:8099/api/health
+        mkdir -p /tmp/templates
+        cp index.html /tmp/templates/
+        cp waiting.html /tmp/templates/
 
-    - name: Tear down stack
-      if: always()
-      run: docker rm -f bolabaden
+    - name: Start session manager
+      run: |
+        python session_manager.py &
+        sleep 3
+
+    - name: Test health endpoint
+      run: |
+        response=$(curl -sf http://localhost:8080/health)
+        echo "Health response: $response"
+        [ "$response" = "OK" ] || exit 1
+
+    - name: Test main page
+      run: |
+        curl -sf http://localhost:8080/ | grep -q "KotorScript Session Manager" || exit 1
+
+    - name: Test capacity endpoint
+      run: |
+        response=$(curl -sf http://localhost:8080/capacity)
+        echo "Capacity response: $response"
+        echo "$response" | python -c "import sys, json; d = json.load(sys.stdin); assert d['available'] == True"

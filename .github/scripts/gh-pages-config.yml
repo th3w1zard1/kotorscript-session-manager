@@ -1,7 +1,7 @@
 # GitHub Pages Configuration
-# This file will be dynamically updated by the setup script
+# KOTORScript Session Manager
 
-# Repository information (auto-populated)
+# Repository information (auto-populated in CI)
 repository:
   owner: "{{REPO_OWNER}}"
   name: "{{REPO_NAME}}"
@@ -16,9 +16,9 @@ pages:
 
 # Build settings
 build:
-  source: "src/compose2hcl/dist"
+  source: "."
   output: "gh-pages"
-  commands:
-    - "npm ci"
-    - "npm run build"
-    - "cp -r web/* dist/web/"
+  files:
+    - "index.html"
+    - "waiting.html"
+    - "README.md"

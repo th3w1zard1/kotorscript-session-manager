@@ -98,7 +98,6 @@ vendor/docker/openvpn/client/vpn_config.conf
 vendor/docker/openvpn/client.conf
 static/
 reference/
-.github/
 
 # Vendored code lock files (causes false security warnings)
 src/**/package-lock.json
